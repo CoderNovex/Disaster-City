@@ -114,6 +114,8 @@ for(let x=-35;x<=35;x+=10){
   }
 }
 
+const MAP_MIN=-47;
+const MAP_MAX=47;
 const player={x:0,z:5};
 const keys={};
 addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
@@ -140,8 +142,8 @@ function collidesBuilding(x,z){
 }
 
 function movePlayer(dx,dz){
-  const nx=Math.max(-47,Math.min(47,player.x+dx));
-  const nz=Math.max(-47,Math.min(47,player.z+dz));
+  const nx=Math.max(MAP_MIN,Math.min(MAP_MAX,player.x+dx));
+  const nz=Math.max(MAP_MIN,Math.min(MAP_MAX,player.z+dz));
   if(!collidesBuilding(nx,player.z)) player.x=nx;
   if(!collidesBuilding(player.x,nz)) player.z=nz;
 }
@@ -257,7 +259,6 @@ function frame(now){
   gl.clearColor(0.05,0.12,0.18,1);
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 
-  // Smooth third-person camera that stays behind the player.
   const eye=[player.x,9.5,player.z+13];
   const target=[player.x,1,player.z-2];
   const vp=multiply(
@@ -267,6 +268,15 @@ function frame(now){
 
   // Ground
   drawCube(0,-0.6,0,50,0.5,50,[0.18,0.38,0.16],vp);
+
+  // Map boundary walls
+  const wallColor=[0.08,0.08,0.1];
+  const wallHeight=3;
+  const wallThickness=0.5;
+  drawCube(0,wallHeight,MAP_MIN,MAP_MAX+wallThickness,wallHeight,wallThickness,wallColor,vp);
+  drawCube(0,wallHeight,MAP_MAX,MAP_MAX+wallThickness,wallHeight,wallThickness,wallColor,vp);
+  drawCube(MAP_MIN,wallHeight,0,wallThickness,wallHeight,MAP_MAX+wallThickness,wallColor,vp);
+  drawCube(MAP_MAX,wallHeight,0,wallThickness,wallHeight,MAP_MAX+wallThickness,wallColor,vp);
 
   // Roads
   for(let x=-40;x<=40;x+=20)
@@ -283,7 +293,6 @@ function frame(now){
 
   // Meteor warning and falling meteor
   if(disaster){
-    const active=disaster.phase!=="warning";
     const size=disaster.phase==="impact"?7:2;
     drawCube(
       disaster.x,
