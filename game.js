@@ -96,13 +96,51 @@ const buildings=[
 ];
 for(const b of buildings) obstacles.push({x:b.x,z:b.z,r:4});
 
+// Broken Building / Collapsed Tower landmark.
+// Kept intentionally low-poly: 9 slabs + a small rubble field.
+const tower={x:0,z:16};
+const towerFloors=[];
+let ty=0, tx=0, tz=0;
+for(let i=0;i<9;i++){
+  towerFloors.push({
+    x:tower.x+tx,
+    y:ty+0.55,
+    z:tower.z+tz,
+    sx:4.5-i*0.075,
+    sy:0.55,
+    sz:4.5-i*0.075,
+    color:i%2===0?[0.29,0.25,0.21]:[0.20,0.19,0.17]
+  });
+  ty+=0.65+Math.random()*0.18;
+  tx+=(Math.random()-0.45)*0.42*(1+i/9);
+  tz+=(Math.random()-0.45)*0.42*(1+i/9);
+}
+for(const f of towerFloors) obstacles.push({x:f.x,z:f.z,r:3.5});
+
+const rubble=[];
+for(let i=0;i<42;i++){
+  const ang=Math.random()*Math.PI*2;
+  const dist=3+Math.pow(Math.random(),0.65)*8;
+  const s=0.18+Math.random()*0.65;
+  rubble.push({
+    x:tower.x+Math.cos(ang)*dist,
+    y:s*0.45,
+    z:tower.z+Math.sin(ang)*dist,
+    sx:s*(0.8+Math.random()*1.2),
+    sy:s*(0.5+Math.random()*0.8),
+    sz:s*(0.8+Math.random()*1.2),
+    color:Math.random()<0.65?[0.25,0.22,0.19]:[0.34,0.31,0.26]
+  });
+}
+
 function addItem(x,z,type){ items.push({x,z,type,taken:false}); }
 addItem(-32,-8,"food"); addItem(30,5,"food"); addItem(-5,38,"food");
 addItem(30,-30,"water"); addItem(-32,28,"water"); addItem(8,-20,"water");
+addItem(7,16,"food");
 
 let hunger=100, thirst=100, health=100, survival=120, score=0, gameOver=false;
-let message="Explore, collect supplies, and survive!";
-let messageTimer=0;
+let message="Explore the city and find the broken building!";
+let messageTimer=3;
 
 const timerEl=document.getElementById("timer");
 const healthEl=document.getElementById("health");
@@ -127,21 +165,17 @@ function collectItems(){
     if(Math.hypot(player.x-item.x,player.z-item.z)<2){
       item.taken=true;
       if(item.type==="food"){
-        hunger=Math.min(100,hunger+35);
-        score+=25;
+        hunger=Math.min(100,hunger+35); score+=25;
         message="🍎 Food collected! Hunger restored.";
-      } else {
-        thirst=Math.min(100,thirst+40);
-        score+=25;
+      }else{
+        thirst=Math.min(100,thirst+40); score+=25;
         message="💧 Water collected! Thirst restored.";
       }
       messageTimer=2;
     }
   }
 }
-function endGame(msg){
-  gameOver=true; statusEl.textContent=msg+" Press R to restart.";
-}
+function endGame(msg){ gameOver=true; statusEl.textContent=msg+" Press R to restart."; }
 addEventListener("keydown",e=>{ if(e.key.toLowerCase()==="r"&&gameOver) location.reload(); });
 
 function resize(){
@@ -181,7 +215,7 @@ function frame(now){
     thirstEl.textContent=Math.ceil(thirst);
     scoreEl.textContent=score;
     if(messageTimer>0){ messageTimer-=dt; statusEl.textContent=message; }
-    else statusEl.textContent="🌲 Find food and water. Stay inside the boundary.";
+    else statusEl.textContent="🏚️ Explore the map, collect supplies, and reach the broken building.";
   }
 
   gl.clearColor(0.06,0.11,0.08,1);
@@ -191,31 +225,35 @@ function frame(now){
   const target=[player.x,0,player.z-2];
   const vp=multiply(perspective(Math.PI/3,canvas.width/canvas.height,0.1,130),lookAt(eye,target));
 
-  // Ground
   cube(0,-0.55,0,47,0.45,47,[0.16,0.30,0.12],vp);
-
-  // Simple roads
   cube(0,-0.03,0,3,0.08,45,[0.12,0.12,0.12],vp);
   cube(0,-0.03,0,45,0.08,3,[0.12,0.12,0.12],vp);
 
-  // Boundary walls
   const wall=[0.07,0.10,0.08];
   cube(0,2.5,MAP_MIN,46,2.5,0.5,wall,vp);
   cube(0,2.5,MAP_MAX,46,2.5,0.5,wall,vp);
   cube(MAP_MIN,2.5,0,0.5,2.5,46,wall,vp);
   cube(MAP_MAX,2.5,0,0.5,2.5,46,wall,vp);
 
-  // Buildings
   for(const b of buildings) cube(b.x,b.h,b.z,3,b.h,3,[0.30,0.28,0.23],vp);
 
-  // Supplies
+  // Collapsed tower: compressed tilted-looking stack represented by offset slabs.
+  for(const f of towerFloors) cube(f.x,f.y,f.z,f.sx,f.sy,f.sz,f.color,vp);
+
+  // Lightweight rubble around the tower.
+  for(const r of rubble) cube(r.x,r.y,r.z,r.sx,r.sy,r.sz,r.color,vp);
+
+  // Tiny fire markers: cheap cubes instead of lights/particle systems.
+  const pulse=0.65+Math.sin(now*0.01)*0.2;
+  cube(tower.x+4.5,0.55,tower.z+4.5,0.35,pulse,0.35,[0.95,0.25,0.04],vp);
+  cube(tower.x+5.5,0.45,tower.z+3.8,0.25,pulse*0.8,0.25,[1.0,0.55,0.05],vp);
+
   for(const item of items){
     if(item.taken) continue;
     const color=item.type==="food"?[0.95,0.55,0.08]:[0.08,0.55,0.95];
     cube(item.x,0.8,item.z,0.65,0.8,0.65,color,vp);
   }
 
-  // Player
   cube(player.x,1,player.z,0.55,1,0.55,[0.85,0.85,0.2],vp);
 }
 requestAnimationFrame(frame);
