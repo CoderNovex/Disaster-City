@@ -69,18 +69,20 @@ function perspective(fov, aspect, near, far) {
     0,0,(2*far*near)*nf,0
   ];
 }
+
 function multiply(a,b) {
   const o = new Array(16);
   for (let c=0;c<4;c++) for (let r=0;r<4;r++)
     o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];
   return o;
 }
+
 function lookAt(eye, target, up=[0,1,0]) {
-  let z = [eye[0]-target[0],eye[1]-target[1],eye[2]-target[2]];
-  let zl = Math.hypot(...z); z=z.map(v=>v/zl);
-  let x = [up[1]*z[2]-up[2]*z[1],up[2]*z[0]-up[0]*z[2],up[0]*z[1]-up[1]*z[0]];
-  let xl = Math.hypot(...x); x=x.map(v=>v/xl);
-  let y = [z[1]*x[2]-z[2]*x[1],z[2]*x[0]-z[0]*x[2],z[0]*x[1]-z[1]*x[0]];
+  let z=[eye[0]-target[0],eye[1]-target[1],eye[2]-target[2]];
+  let zl=Math.hypot(...z); z=z.map(v=>v/zl);
+  let x=[up[1]*z[2]-up[2]*z[1],up[2]*z[0]-up[0]*z[2],up[0]*z[1]-up[1]*z[0]];
+  let xl=Math.hypot(...x); x=x.map(v=>v/xl);
+  let y=[z[1]*x[2]-z[2]*x[1],z[2]*x[0]-z[0]*x[2],z[0]*x[1]-z[1]*x[0]];
   return [
     x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0,
     -(x[0]*eye[0]+x[1]*eye[1]+x[2]*eye[2]),
@@ -88,11 +90,12 @@ function lookAt(eye, target, up=[0,1,0]) {
     -(z[0]*eye[0]+z[1]*eye[1]+z[2]*eye[2]),1
   ];
 }
+
 function model(x,y,z,sx,sy,sz) {
   return [sx,0,0,0, 0,sy,0,0, 0,0,sz,0, x,y,z,1];
 }
 
-function drawCube(x,y,z,sx,sy,sz,color, vp) {
+function drawCube(x,y,z,sx,sy,sz,color,vp) {
   gl.uniformMatrix4fv(uMVP,false,new Float32Array(multiply(vp,model(x,y,z,sx,sy,sz))));
   gl.uniform3fv(uColor,new Float32Array(color));
   gl.drawElements(gl.TRIANGLES,36,gl.UNSIGNED_SHORT,0);
@@ -116,85 +119,191 @@ const keys={};
 addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-let timeLeft=60,score=0,disaster=null,disasterTimer=3,gameOver=false;
+let timeLeft=60;
+let score=0;
+let health=100;
+let disaster=null;
+let disasterTimer=3;
+let gameOver=false;
+
 const timerEl=document.getElementById("timer");
+const healthEl=document.getElementById("health");
 const scoreEl=document.getElementById("score");
 const statusEl=document.getElementById("status");
 
-function startDisaster(){
-  disaster={x:(Math.random()-0.5)*70,z:(Math.random()-0.5)*70,r:2,active:false};
-  statusEl.textContent="⚠️ METEOR INCOMING!";
-  setTimeout(()=>{
-    if(gameOver||!disaster)return;
-    disaster.active=true; disaster.r=7;
-    statusEl.textContent="💥 IMPACT! RUN!";
-    setTimeout(()=>{ disaster=null; if(!gameOver)statusEl.textContent="☀️ Clear... for now."; },1000);
-  },1200);
+function collidesBuilding(x,z){
+  const half=0.65;
+  for(const b of buildings){
+    if(Math.abs(x-b.x)<3+half && Math.abs(z-b.z)<3+half) return true;
+  }
+  return false;
 }
 
-function endGame(msg){gameOver=true;statusEl.textContent=msg+" Press R to restart.";}
-addEventListener("keydown",e=>{if(e.key.toLowerCase()==="r"&&gameOver)location.reload();});
+function movePlayer(dx,dz){
+  const nx=Math.max(-47,Math.min(47,player.x+dx));
+  const nz=Math.max(-47,Math.min(47,player.z+dz));
+  if(!collidesBuilding(nx,player.z)) player.x=nx;
+  if(!collidesBuilding(player.x,nz)) player.z=nz;
+}
+
+function startDisaster(){
+  disaster={
+    x:(Math.random()-0.5)*70,
+    z:(Math.random()-0.5)*70,
+    phase:"warning",
+    age:0,
+    y:16,
+    r:2,
+    hit:false
+  };
+  statusEl.textContent="⚠️ METEOR INCOMING — MOVE!";
+}
+
+function damagePlayer(amount){
+  health=Math.max(0,health-amount);
+  healthEl.textContent=health;
+  score=Math.max(0,score-25);
+  scoreEl.textContent=score;
+  if(health<=0) endGame("💥 You ran out of health!");
+}
+
+function updateDisaster(dt){
+  if(!disaster) return;
+
+  disaster.age+=dt;
+
+  if(disaster.phase==="warning"){
+    if(disaster.age>=1.5){
+      disaster.phase="falling";
+      disaster.age=0;
+      disaster.y=16;
+      disaster.r=4;
+      statusEl.textContent="☄️ METEOR FALLING!";
+    }
+  } else if(disaster.phase==="falling"){
+    disaster.y=Math.max(0.8,16-(disaster.age/0.55)*15.2);
+    if(disaster.age>=0.55){
+      disaster.phase="impact";
+      disaster.age=0;
+      disaster.y=0.8;
+      disaster.r=7;
+      statusEl.textContent="💥 IMPACT! RUN!";
+      
+      const d=Math.hypot(player.x-disaster.x,player.z-disaster.z);
+      if(d<7 && !disaster.hit){
+        disaster.hit=true;
+        damagePlayer(50);
+      }
+    }
+  } else if(disaster.phase==="impact"){
+    if(disaster.age>=1.0){
+      disaster=null;
+      statusEl.textContent="☀️ Clear... for now.";
+    }
+  }
+}
+
+function endGame(msg){
+  gameOver=true;
+  statusEl.textContent=msg+" Press R to restart.";
+}
+
+addEventListener("keydown",e=>{
+  if(e.key.toLowerCase()==="r"&&gameOver) location.reload();
+});
 
 function resize(){
   canvas.width=innerWidth;
   canvas.height=innerHeight;
   gl.viewport(0,0,canvas.width,canvas.height);
 }
-addEventListener("resize",resize); resize();
+addEventListener("resize",resize);
+resize();
 
 let last=performance.now();
+
 function frame(now){
   requestAnimationFrame(frame);
-  const dt=Math.min((now-last)/1000,0.05); last=now;
+  const dt=Math.min((now-last)/1000,0.05);
+  last=now;
 
   if(!gameOver){
     const speed=8*dt;
-    if(keys.w||keys.arrowup)player.z-=speed;
-    if(keys.s||keys.arrowdown)player.z+=speed;
-    if(keys.a||keys.arrowleft)player.x-=speed;
-    if(keys.d||keys.arrowright)player.x+=speed;
-    player.x=Math.max(-47,Math.min(47,player.x));
-    player.z=Math.max(-47,Math.min(47,player.z));
+    let dx=0,dz=0;
+    if(keys.w||keys.arrowup)dz-=speed;
+    if(keys.s||keys.arrowdown)dz+=speed;
+    if(keys.a||keys.arrowleft)dx-=speed;
+    if(keys.d||keys.arrowright)dx+=speed;
+    if(dx||dz) movePlayer(dx,dz);
 
     timeLeft-=dt;
     timerEl.textContent=Math.max(0,Math.ceil(timeLeft));
-    if(timeLeft<=0){score+=100;scoreEl.textContent=score;endGame("🏆 YOU SURVIVED!");}
+
+    if(timeLeft<=0){
+      score+=100;
+      scoreEl.textContent=score;
+      endGame("🏆 YOU SURVIVED!");
+    }
 
     disasterTimer-=dt;
-    if(disasterTimer<=0&&!disaster){startDisaster();disasterTimer=12;}
-
-    if(disaster){
-      const d=Math.hypot(player.x-disaster.x,player.z-disaster.z);
-      if(disaster.active&&d<disaster.r)endGame("💥 You got caught!");
+    if(disasterTimer<=0&&!disaster){
+      startDisaster();
+      disasterTimer=12;
     }
+
+    updateDisaster(dt);
   }
 
   gl.clearColor(0.05,0.12,0.18,1);
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 
-  const eye=[player.x,10,player.z+14];
-  const target=[player.x,0,player.z-2];
-  const vp=multiply(perspective(Math.PI/3,canvas.width/canvas.height,0.1,150),lookAt(eye,target));
+  // Smooth third-person camera that stays behind the player.
+  const eye=[player.x,9.5,player.z+13];
+  const target=[player.x,1,player.z-2];
+  const vp=multiply(
+    perspective(Math.PI/3,canvas.width/canvas.height,0.1,150),
+    lookAt(eye,target)
+  );
 
   // Ground
   drawCube(0,-0.6,0,50,0.5,50,[0.18,0.38,0.16],vp);
 
   // Roads
-  for(let x=-40;x<=40;x+=20)drawCube(x,-0.02,0,3.5,0.08,50,[0.12,0.12,0.13],vp);
-  for(let z=-40;z<=40;z+=20)drawCube(0,0,z,50,0.08,3.5,[0.12,0.12,0.13],vp);
+  for(let x=-40;x<=40;x+=20)
+    drawCube(x,-0.02,0,3.5,0.08,50,[0.12,0.12,0.13],vp);
+  for(let z=-40;z<=40;z+=20)
+    drawCube(0,0,z,50,0.08,3.5,[0.12,0.12,0.13],vp);
 
-  for(const b of buildings)drawCube(b.x,b.h,b.z,3,b.h,3,b.c,vp);
+  // Buildings
+  for(const b of buildings)
+    drawCube(b.x,b.h,b.z,3,b.h,3,b.c,vp);
 
   // Player
   drawCube(player.x,1,player.z,0.55,1,0.55,[0.1,0.35,1],vp);
 
-  // Meteor warning / impact
+  // Meteor warning and falling meteor
   if(disaster){
-    drawCube(disaster.x,0.15,disaster.z,disaster.active?7:2,0.12,disaster.active?7:2,
-      disaster.active?[1,0.08,0.03]:[1,0.65,0.05],vp);
-    if(disaster.active)drawCube(disaster.x,4,disaster.z,1.5,1.5,1.5,[0.2,0.08,0.03],vp);
+    const active=disaster.phase!=="warning";
+    const size=disaster.phase==="impact"?7:2;
+    drawCube(
+      disaster.x,
+      0.12,
+      disaster.z,
+      size,0.12,size,
+      disaster.phase==="impact"?[1,0.08,0.03]:[1,0.65,0.05],
+      vp
+    );
+
+    if(disaster.phase==="falling"){
+      drawCube(disaster.x,disaster.y,disaster.z,1.1,1.1,1.1,[0.22,0.08,0.03],vp);
+    }
+
+    if(disaster.phase==="impact"){
+      drawCube(disaster.x,1.5,disaster.z,1.7,1.5,1.7,[0.35,0.08,0.02],vp);
+    }
   }
 
-  statusEl.textContent = gameOver ? statusEl.textContent : (disaster ? statusEl.textContent : "🌆 Survive the city!");
+  if(!gameOver && !disaster) statusEl.textContent="🌆 Survive the city!";
 }
+
 requestAnimationFrame(frame);
