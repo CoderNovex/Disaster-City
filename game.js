@@ -33,6 +33,7 @@ addEventListener("mousemove",e=>{if(!locked)return;targetYaw-=e.movementX*.0028;
 const loader=new GLTFLoader();
 const assetBaseRoad="./assets/kenney-city-kit-roads/";
 const assetBaseCar="./assets/kenney-car-kit/";
+const assetBaseCarRemote="https://raw.githubusercontent.com/Arslan12216775/kenney_car-kit/master/Models/GLB%20format/";
 const modelCache=new Map();
 async function loadModel(url){
   if(modelCache.has(url))return modelCache.get(url).clone(true);
@@ -126,7 +127,12 @@ async function selectCar(i){
   document.querySelectorAll("#carMenu button").forEach((b,n)=>b.classList.toggle("selected",n===i));
   if(playerCar)scene.remove(playerCar);
   try{
-    playerCar=await loadModel(assetBaseCar+carDefs[i].file);
+    try{
+      playerCar=await loadModel(assetBaseCar+carDefs[i].file);
+    }catch(localErr){
+      console.warn("Local car asset not ready; using remote fallback.",localErr);
+      playerCar=await loadModel(assetBaseCarRemote+carDefs[i].file);
+    }
     playerCar.visible=true;
     placeModel(playerCar,player.x,.02,player.z,carDefs[i].scale,carHeading);
     statusEl.textContent="🚗 "+carDefs[i].name+" selected. Explore the city!";
