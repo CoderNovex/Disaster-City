@@ -11,7 +11,7 @@ scene.fog=new THREE.Fog(0x0b120d,65,120);
 
 const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.05,140);
 const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:"low-power",failIfMajorPerformanceCaveat:false});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1));
+renderer.setPixelRatio(Math.min(devicePixelRatio,.75));
 renderer.setSize(innerWidth,innerHeight,false);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 
@@ -134,8 +134,8 @@ async function loadCityModels(){
   // The uploaded Kenney City Kit Roads pack is imported into the repo by the
   // GitHub Actions workflow, so these are same-site assets rather than remote road files.
   const roadPieces=[];
-  for(let p=-40;p<=40;p+=10) roadPieces.push(["road-straight.glb",0,p,1,Math.PI/2]);
-  for(let p=-40;p<=40;p+=10) roadPieces.push(["road-straight.glb",p,0,1,0]);
+  for(let p=-20;p<=20;p+=10) roadPieces.push(["road-straight.glb",0,p,1,Math.PI/2]);
+  for(let p=-20;p<=20;p+=10) roadPieces.push(["road-straight.glb",p,0,1,0]);
   roadPieces.push(["road-crossing.glb",0,0,1,0]);
   roadPieces.push(["road-bend.glb",-10,-10,1,0]);
   roadPieces.push(["road-bend.glb",10,-10,1,Math.PI/2]);
@@ -161,15 +161,6 @@ async function loadCityModels(){
       const m=await loadModel(assetBaseRoad+file);
       placeModel(m,x,y,z,scale,rot);
     }catch(e){ console.warn("Prop model failed:",file,e); }
-  }
-
-  // Preload the car models so switching is instant after the first load.
-  for(const c of carDefs){
-    try{
-      const m=await loadModel(assetBaseCar+c.file);
-      scene.add(m);
-      carModels.push(m);
-    }catch(e){ console.warn("Car preload failed:",c.file,e); }
   }
 
   await selectCar(selectedCar);
@@ -206,9 +197,10 @@ function animate(now){
   const camDistance=8,camHeight=4.2;
   const behindX=player.x+Math.sin(carHeading)*camDistance;
   const behindZ=player.z+Math.cos(carHeading)*camDistance;
-  camera.position.lerp(new THREE.Vector3(behindX,camHeight,behindZ),.12);
-  const lookAt=new THREE.Vector3(player.x,1.1,player.z);
-  camera.lookAt(lookAt);
+  camera.position.x+=(behindX-camera.position.x)*.12;
+  camera.position.y+=(camHeight-camera.position.y)*.12;
+  camera.position.z+=(behindZ-camera.position.z)*.12;
+  camera.lookAt(player.x,1.1,player.z);
   renderer.render(scene,camera);drawMinimap();
 }
 requestAnimationFrame(animate);
@@ -272,7 +264,7 @@ function startRecording(){
       alert("Recording is not supported in this browser/environment.");
       return;
     }
-    const stream=renderer.domElement.captureStream(30);
+    const stream=renderer.domElement.captureStream(20);
     recordedChunks=[];
     const mimeType=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm";
     mediaRecorder=new MediaRecorder(stream,{mimeType});
