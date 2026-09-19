@@ -28,10 +28,10 @@ addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true;if(e.key.toLowerCa
 addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false});
 canvas.addEventListener("click",()=>canvas.requestPointerLock?.());
 document.addEventListener("pointerlockchange",()=>locked=document.pointerLockElement===canvas);
-addEventListener("mousemove",e=>{if(!locked)return;targetYaw-=e.movementX*.0028;targetPitch-=e.movementY*.0022;targetPitch=Math.max(-1.25,Math.min(1.25,targetPitch))});
+addEventListener("mousemove",e=>{if(!locked)return;targetYaw-=e.movementX*.0028;targetPitch-=e.movementY*.0022;targetPitch=Math.max(-.5,Math.min(.65,targetPitch));carHeading-=e.movementX*.0007});
 
 const loader=new GLTFLoader();
-const assetBaseRoad="https://raw.githubusercontent.com/petroulacl/fps-buildings-env-kit/main/props/kenney-city-kit-roads/Models/GLB%20format/";
+const assetBaseRoad="./assets/kenney-city-kit-roads/";
 const assetBaseCar="https://raw.githubusercontent.com/Arslan12216775/kenney_car-kit/master/Models/GLB%20format/";
 const modelCache=new Map();
 async function loadModel(url){
@@ -81,29 +81,99 @@ function endGame(m){gameOver=true;statusEl.textContent=m+" Press R to restart."}
 const playerMarker=new THREE.Mesh(new THREE.CapsuleGeometry(.22,.7,4,8),new THREE.MeshLambertMaterial({color:0x35a7ff}));
 playerMarker.position.set(0,1.05,0);scene.add(playerMarker);
 
+
+// --- Third-person car system ---
+const carDefs=[
+  {name:"Sedan",file:"sedan.glb",speed:11,scale:.9},
+  {name:"SUV",file:"suv.glb",speed:10,scale:.9},
+  {name:"Taxi",file:"taxi.glb",speed:12,scale:.9},
+  {name:"Ambulance",file:"ambulance.glb",speed:9,scale:.82},
+  {name:"Police",file:"police.glb",speed:13,scale:.82}
+];
+let selectedCar=0,playerCar=null,carHeading=0,carModels=[];
+
+const carMenu=document.createElement("div");
+carMenu.id="carMenu";
+carMenu.innerHTML='<div class="carMenuTitle">🚗 CHOOSE YOUR CAR</div><div class="carButtons"></div><div class="carHint">W/S drive • A/D steer • Mouse look</div>';
+document.body.appendChild(carMenu);
+const carButtons=carMenu.querySelector(".carButtons");
+
+function makeCarButton(i){
+  const b=document.createElement("button");
+  b.textContent=carDefs[i].name;
+  b.addEventListener("click",()=>selectCar(i));
+  carButtons.appendChild(b);
+}
+carDefs.forEach((_,i)=>makeCarButton(i));
+
+function setCarMenu(open){
+  carMenu.style.display=open?"flex":"none";
+}
+setCarMenu(true);
+
+async function selectCar(i){
+  selectedCar=i;
+  document.querySelectorAll("#carMenu button").forEach((b,n)=>b.classList.toggle("selected",n===i));
+  if(playerCar)scene.remove(playerCar);
+  try{
+    playerCar=await loadModel(assetBaseCar+carDefs[i].file);
+    placeModel(playerCar,player.x,.02,player.z,carDefs[i].scale,carHeading);
+    carModels.push(playerCar);
+    statusEl.textContent="🚗 "+carDefs[i].name+" selected. Explore the city!";
+    setCarMenu(false);
+  }catch(e){
+    statusEl.textContent="⚠️ Could not load "+carDefs[i].name+" model.";
+    console.warn("Car load failed",e);
+  }
+}
+
 async function loadCityModels(){
-  statusEl.textContent="Loading road & car models...";
-  const roads=[
-    ["road-straight.glb",0,0,1,0],
-    ["road-crossroad.glb",0,0,1,0],
-    ["road-straight.glb",-20,0,1,0],
-    ["road-straight.glb",20,0,1,0],
-    ["road-straight.glb",0,-20,1,Math.PI/2],
-    ["road-straight.glb",0,20,1,Math.PI/2],
-    ["road-bend.glb",-18,18,1,Math.PI/2],
-    ["road-bend.glb",18,18,1,0],
-    ["road-bend.glb",-18,-18,1,Math.PI],
-    ["road-bend.glb",18,-18,1,-Math.PI/2]
+  statusEl.textContent="Loading Kenney roads & cars...";
+
+  // The uploaded Kenney City Kit Roads pack is imported into the repo by the
+  // GitHub Actions workflow, so these are same-site assets rather than remote road files.
+  const roadPieces=[];
+  for(let p=-40;p<=40;p+=10) roadPieces.push(["road-straight.glb",0,p,1,Math.PI/2]);
+  for(let p=-40;p<=40;p+=10) roadPieces.push(["road-straight.glb",p,0,1,0]);
+  roadPieces.push(["road-crossing.glb",0,0,1,0]);
+  roadPieces.push(["road-bend.glb",-10,-10,1,0]);
+  roadPieces.push(["road-bend.glb",10,-10,1,Math.PI/2]);
+  roadPieces.push(["road-bend.glb",-10,10,1,-Math.PI/2]);
+  roadPieces.push(["road-bend.glb",10,10,1,Math.PI]);
+
+  for(const [file,x,z,scale,rot] of roadPieces){
+    try{
+      const m=await loadModel(assetBaseRoad+file);
+      placeModel(m,x,-.03,z,scale,rot);
+    }catch(e){ console.warn("Road model failed:",file,e); }
+  }
+
+  const props=[
+    ["road-sign-stop.glb",-6,.0,-12,1,0],
+    ["construction-cone.glb",5,0,7,.8,0],
+    ["light-square.glb",-14,0,12,1,0],
+    ["construction-barrier.glb",14,0,-12,1,0],
+    ["light-curved-cross.glb",-14,0,-12,.75,0]
   ];
-  for(const [file,x,z,s,r] of roads){try{const m=await loadModel(assetBaseRoad+file);placeModel(m,x,-.02,z,s,r)}catch(e){console.warn("Road load failed",file,e)}}
-  const cars=[
-    ["sedan.glb",-8,5,.9,.2],["suv.glb",9,-5,.9,Math.PI],["taxi.glb",17,6,.9,Math.PI/2],
-    ["ambulance.glb",-17,-6,.82,-Math.PI/2],["police.glb",18,-25,.82,Math.PI]
-  ];
-  for(const [file,x,z,s,r] of cars){try{const m=await loadModel(assetBaseCar+file);placeModel(m,x,0,z,s,r)}catch(e){}}
-  const props=[["road-sign-stop.glb",-6,0,-12,1,0],["construction-cone.glb",5,0,7,.8,0],["light-square.glb",-14,0,12,1,0]];
-  for(const [file,x,y,z,s,r] of props){try{const m=await loadModel(assetBaseRoad+file);placeModel(m,x,y,z,s,r)}catch(e){}}
-  statusEl.textContent="🏙️ City loaded. Explore, collect supplies, survive.";
+  for(const [file,x,y,z,scale,rot] of props){
+    try{
+      const m=await loadModel(assetBaseRoad+file);
+      placeModel(m,x,y,z,scale,rot);
+    }catch(e){ console.warn("Prop model failed:",file,e); }
+  }
+
+  // Preload the car models so switching is instant after the first load.
+  for(const c of carDefs){
+    try{
+      const m=await loadModel(assetBaseCar+c.file);
+      m.visible=false;
+      scene.add(m);
+      carModels.push(m);
+    }catch(e){ console.warn("Car preload failed:",c.file,e); }
+  }
+
+  await selectCar(selectedCar);
+  statusEl.textContent="🏙️ City loaded. Choose a car and survive!";
 }
 loadCityModels();
 
@@ -122,20 +192,23 @@ function animate(now){
   requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.05);last=now;
   if(!gameOver){
     yaw+=(targetYaw-yaw)*.35;pitch+=(targetPitch-pitch)*.35;
-    const speed=10*dt;let dx=0,dz=0;
-    if(keys.w||keys.arrowup){dx-=Math.sin(yaw)*speed;dz-=Math.cos(yaw)*speed}
-    if(keys.s||keys.arrowdown){dx+=Math.sin(yaw)*speed;dz+=Math.cos(yaw)*speed}
-    if(keys.a||keys.arrowleft){dx-=Math.cos(yaw)*speed;dz+=Math.sin(yaw)*speed}
-    if(keys.d||keys.arrowright){dx+=Math.cos(yaw)*speed;dz-=Math.sin(yaw)*speed}
+    const speed=carDefs[selectedCar].speed*dt;let dx=0,dz=0;
+    if(keys.a||keys.arrowleft)carHeading+=2.2*dt;
+    if(keys.d||keys.arrowright)carHeading-=2.2*dt;
+    if(keys.w||keys.arrowup){dx-=Math.sin(carHeading)*speed;dz-=Math.cos(carHeading)*speed}
+    if(keys.s||keys.arrowdown){dx+=Math.sin(carHeading)*speed*.65;dz+=Math.cos(carHeading)*speed*.65}
     if(dx||dz){const l=Math.hypot(dx,dz);if(l>speed){dx=dx/l*speed;dz=dz/l*speed}move(dx,dz)}
-    playerMarker.position.set(player.x,1.05,player.z);collect();
+    if(playerCar){playerCar.position.set(player.x,.02,player.z);playerCar.rotation.y=carHeading;} collect();
     survival-=dt;hunger=Math.max(0,hunger-dt*1.7);thirst=Math.max(0,thirst-dt*2.2);if(hunger<=0||thirst<=0)health=Math.max(0,health-dt*5);
     if(health<=0)endGame("☠️ Survival failed.");if(survival<=0){score+=200;endGame("🏆 YOU SURVIVED!")}
     updateHud();if(messageTimer>0){messageTimer-=dt;statusEl.textContent=message}
   }
-  const eye=new THREE.Vector3(player.x,1.65,player.z);
-  const forward=new THREE.Vector3(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch));
-  camera.position.copy(eye);camera.lookAt(eye.clone().add(forward));
+  const camDistance=8,camHeight=4.2;
+  const behindX=player.x+Math.sin(carHeading)*camDistance;
+  const behindZ=player.z+Math.cos(carHeading)*camDistance;
+  camera.position.lerp(new THREE.Vector3(behindX,camHeight,behindZ),.12);
+  const lookAt=new THREE.Vector3(player.x,1.1,player.z);
+  camera.lookAt(lookAt);
   renderer.render(scene,camera);drawMinimap();
 }
 requestAnimationFrame(animate);
