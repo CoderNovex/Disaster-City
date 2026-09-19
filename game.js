@@ -1,4 +1,6 @@
 const canvas = document.getElementById("game");
+const minimap = document.getElementById("minimap");
+const mapCtx = minimap.getContext("2d");
 const gl = canvas.getContext("webgl", { antialias:false, powerPreference:"high-performance" });
 if(!gl){ document.getElementById("status").textContent="WebGL is not supported."; throw new Error("WebGL not supported"); }
 
@@ -54,6 +56,8 @@ document.addEventListener("pointerlockchange",()=>{locked=document.pointerLockEl
 addEventListener("mousemove",e=>{if(!locked)return;targetYaw-=e.movementX*.0028;targetPitch-=e.movementY*.0022;targetPitch=Math.max(-1.35,Math.min(1.35,targetPitch))});
 
 let last=performance.now();
+function drawMinimap(){const w=minimap.width,h=minimap.height,c=mapCtx;c.clearRect(0,0,w,h);c.fillStyle="#17251a";c.fillRect(0,0,w,h);const sc=w/(MAP_MAX-MAP_MIN);const px=x=>((x-MAP_MIN)*sc), pz=z=>((z-MAP_MIN)*sc);c.strokeStyle="rgba(255,255,255,.12)";c.lineWidth=1;for(let v=-40;v<=40;v+=10){c.beginPath();c.moveTo(px(v),0);c.lineTo(px(v),h);c.stroke();c.beginPath();c.moveTo(0,pz(v));c.lineTo(w,pz(v));c.stroke()}c.fillStyle="#555047";for(const b of buildings){c.fillRect(px(b.x-3),pz(b.z-3),6*sc,6*sc)}c.fillStyle="#a59a8a";for(const f of towerFloors){c.fillRect(px(f.x-2.5),pz(f.z-2.5),5*sc,5*sc)}c.fillStyle="#f5a623";for(const item of items)if(!item.taken){c.beginPath();c.arc(px(item.x),pz(item.z),3,0,Math.PI*2);c.fill()}c.fillStyle="#ff4b32";c.beginPath();c.arc(px(tower.x+5),pz(tower.z+4),4,0,Math.PI*2);c.fill()}c.fillStyle="#35a7ff";c.beginPath();c.arc(px(player.x),pz(player.z),4,0,Math.PI*2);c.fill();c.strokeStyle="#35a7ff";c.lineWidth=2;c.beginPath();c.moveTo(px(player.x),pz(player.z));c.lineTo(px(player.x)-Math.sin(yaw)*12,pz(player.z)-Math.cos(yaw)*12);c.stroke();c.fillStyle="#fff";c.font="bold 12px Arial";c.fillText("MAP",8,16)}
+
 function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.05);last=now;
 if(!gameOver){
   yaw+=(targetYaw-yaw)*.35; pitch+=(targetPitch-pitch)*.35;
@@ -78,5 +82,6 @@ const wall=[.07,.10,.08];cube(0,2.5,MAP_MIN,46,2.5,.5,wall,vp);cube(0,2.5,MAP_MA
 for(const b of buildings)cube(b.x,b.h,b.z,3,b.h,3,[.30,.28,.23],vp);for(const f of towerFloors)cube(f.x,f.y,f.z,f.sx,f.sy,f.sz,f.color,vp);for(const r of rubble)cube(r.x,r.y,r.z,r.sx,r.sy,r.sz,r.color,vp);
 const pulse=.65+Math.sin(now*.01)*.2;cube(tower.x+4.5,.55,tower.z+4.5,.35,pulse,.35,[.95,.25,.04],vp);cube(tower.x+5.5,.45,tower.z+3.8,.25,pulse*.8,.25,[1,.55,.05],vp);
 for(const item of items)if(!item.taken)cube(item.x,.8,item.z,.65,.8,.65,item.type==="food"?[.95,.55,.08]:[.08,.55,.95],vp);
+drawMinimap();
 }
 requestAnimationFrame(frame);
