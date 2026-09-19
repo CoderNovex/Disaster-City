@@ -1,0 +1,34 @@
+name: Import Kenney road assets
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  import-roads:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import GLB road-kit assets
+        run: |
+          git clone --depth 1 https://github.com/petroulacl/fps-buildings-env-kit.git /tmp/kenney-roads
+          mkdir -p assets/kenney-city-kit-roads
+          cp -R "/tmp/kenney-roads/props/kenney-city-kit-roads/Models/GLB format/." "assets/kenney-city-kit-roads/"
+
+      - name: Commit imported assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/kenney-city-kit-roads
+          if git diff --cached --quiet; then
+            echo "No new road assets."
+            exit 0
+          fi
+          git commit -m "Add Kenney City Kit Roads assets"
+          git push
