@@ -32,7 +32,7 @@ addEventListener("mousemove",e=>{if(!locked)return;targetYaw-=e.movementX*.0028;
 
 const loader=new GLTFLoader();
 const assetBaseRoad="./assets/kenney-city-kit-roads/";
-const assetBaseCar="https://raw.githubusercontent.com/Arslan12216775/kenney_car-kit/master/Models/GLB%20format/";
+const assetBaseCar="./assets/kenney-car-kit/";
 const modelCache=new Map();
 async function loadModel(url){
   if(modelCache.has(url))return modelCache.get(url).clone(true);
@@ -79,22 +79,32 @@ function collect(){for(const i of items)if(!i.taken&&Math.hypot(player.x-i.x,pla
 function endGame(m){gameOver=true;statusEl.textContent=m+" Press R to restart."}
 
 const playerMarker=new THREE.Mesh(new THREE.CapsuleGeometry(.22,.7,4,8),new THREE.MeshLambertMaterial({color:0x35a7ff}));
-playerMarker.position.set(0,1.05,0);scene.add(playerMarker);
+playerMarker.position.set(0,1.05,0);scene.add(playerMarker); playerMarker.visible=false;
 
 
 // --- Third-person car system ---
 const carDefs=[
   {name:"Sedan",file:"sedan.glb",speed:11,scale:.9},
+  {name:"Sports Sedan",file:"sedan-sports.glb",speed:14,scale:.9},
   {name:"SUV",file:"suv.glb",speed:10,scale:.9},
+  {name:"Luxury SUV",file:"suv-luxury.glb",speed:11,scale:.9},
   {name:"Taxi",file:"taxi.glb",speed:12,scale:.9},
   {name:"Ambulance",file:"ambulance.glb",speed:9,scale:.82},
-  {name:"Police",file:"police.glb",speed:13,scale:.82}
+  {name:"Police",file:"police.glb",speed:13,scale:.82},
+  {name:"Fire Truck",file:"firetruck.glb",speed:8,scale:.82},
+  {name:"Van",file:"van.glb",speed:10,scale:.9},
+  {name:"Delivery",file:"delivery.glb",speed:10,scale:.85},
+  {name:"Truck",file:"truck.glb",speed:8,scale:.82},
+  {name:"Flat Truck",file:"truck-flat.glb",speed:8,scale:.82},
+  {name:"Race Car",file:"race.glb",speed:16,scale:.9},
+  {name:"Future Racer",file:"race-future.glb",speed:17,scale:.9},
+  {name:"Tractor",file:"tractor.glb",speed:6,scale:.82}
 ];
-let selectedCar=0,playerCar=null,carHeading=0,carModels=[];
+let selectedCar=0,playerCar=null,carHeading=0;
 
 const carMenu=document.createElement("div");
 carMenu.id="carMenu";
-carMenu.innerHTML='<div class="carMenuTitle">🚗 CHOOSE YOUR CAR</div><div class="carButtons"></div><div class="carHint">W/S drive • A/D steer • Mouse look</div>';
+carMenu.innerHTML='<div class="carMenuTitle">🚗 CHOOSE YOUR RIDE</div><div class="carButtons"></div><div class="carHint">W = forward • S = reverse • A/D = steer • C = change vehicle</div>';
 document.body.appendChild(carMenu);
 const carButtons=carMenu.querySelector(".carButtons");
 
@@ -107,7 +117,7 @@ function makeCarButton(i){
 carDefs.forEach((_,i)=>makeCarButton(i));
 
 function setCarMenu(open){
-  carMenu.style.display=open?"flex":"none";
+  carMenu.style.display=open?"flex":"none";\n  if(open) document.exitPointerLock?.();
 }
 setCarMenu(true);
 
@@ -145,7 +155,7 @@ async function loadCityModels(){
   for(const [file,x,z,scale,rot] of roadPieces){
     try{
       const m=await loadModel(assetBaseRoad+file);
-      placeModel(m,x,-.03,z,scale,rot);
+      placeModel(m,x,.075,z,scale*1.18,rot);
     }catch(e){ console.warn("Road model failed:",file,e); }
   }
 
@@ -163,17 +173,10 @@ async function loadCityModels(){
     }catch(e){ console.warn("Prop model failed:",file,e); }
   }
 
-  // Preload the car models so switching is instant after the first load.
-  for(const c of carDefs){
-    try{
-      const m=await loadModel(assetBaseCar+c.file);
-      scene.add(m);
-      carModels.push(m);
-    }catch(e){ console.warn("Car preload failed:",c.file,e); }
-  }
-
-  await selectCar(selectedCar);
-  statusEl.textContent="🏙️ City loaded. Choose a car and survive!";
+  // All vehicle files are available in the imported Kenney car-kit folder.
+  // The player chooses one instead of spawning every model on top of each other.
+  statusEl.textContent="🏙️ Roads loaded! Choose your ride.";
+  setCarMenu(true);
 }
 loadCityModels();
 
@@ -231,6 +234,6 @@ bigMap.addEventListener("wheel",e=>{if(!mapOpen)return;e.preventDefault();mapZoo
 bigMap.addEventListener("pointerdown",e=>{drag=true;lx=e.clientX;ly=e.clientY;bigMap.setPointerCapture(e.pointerId)});
 bigMap.addEventListener("pointermove",e=>{if(!drag)return;mapPanX+=e.clientX-lx;mapPanY+=e.clientY-ly;lx=e.clientX;ly=e.clientY;drawBigMap()});
 bigMap.addEventListener("pointerup",()=>drag=false);
-addEventListener("keydown",e=>{if(e.key.toLowerCase()==="m"){mapOpen=!mapOpen;mapOverlay.style.display=mapOpen?"flex":"none";if(mapOpen){mapZoom=1;mapPanX=0;mapPanY=0;drawBigMap();document.exitPointerLock?.()}}});
+addEventListener("keydown",e=>{if(e.key.toLowerCase()==="c"&&!gameOver){setCarMenu(true);return}if(e.key.toLowerCase()==="m"){mapOpen=!mapOpen;mapOverlay.style.display=mapOpen?"flex":"none";if(mapOpen){mapZoom=1;mapPanX=0;mapPanY=0;drawBigMap();document.exitPointerLock?.()}}});
 setInterval(()=>{if(mapOpen)drawBigMap()},100);
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight,false)});
