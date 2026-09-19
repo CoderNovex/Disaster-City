@@ -195,8 +195,8 @@ function animate(now){
     updateHud();if(messageTimer>0){messageTimer-=dt;statusEl.textContent=message}
   }
   const camDistance=8,camHeight=4.2;
-  const behindX=player.x+Math.sin(carHeading)*camDistance;
-  const behindZ=player.z+Math.cos(carHeading)*camDistance;
+  const behindX=player.x-Math.sin(carHeading)*camDistance;
+  const behindZ=player.z-Math.cos(carHeading)*camDistance;
   camera.position.x+=(behindX-camera.position.x)*.12;
   camera.position.y+=(camHeight-camera.position.y)*.12;
   camera.position.z+=(behindZ-camera.position.z)*.12;
