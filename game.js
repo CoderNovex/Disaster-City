@@ -117,6 +117,7 @@ async function selectCar(i){
   if(playerCar)scene.remove(playerCar);
   try{
     playerCar=await loadModel(assetBaseCar+carDefs[i].file);
+    playerCar.visible=true;
     placeModel(playerCar,player.x,.02,player.z,carDefs[i].scale,carHeading);
     carModels.push(playerCar);
     statusEl.textContent="🚗 "+carDefs[i].name+" selected. Explore the city!";
@@ -166,7 +167,6 @@ async function loadCityModels(){
   for(const c of carDefs){
     try{
       const m=await loadModel(assetBaseCar+c.file);
-      m.visible=false;
       scene.add(m);
       carModels.push(m);
     }catch(e){ console.warn("Car preload failed:",c.file,e); }
