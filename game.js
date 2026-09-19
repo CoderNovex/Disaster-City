@@ -97,3 +97,25 @@ for(const item of items)if(!item.taken)cube(item.x,.8,item.z,.65,.8,.65,item.typ
 drawMinimap();
 }
 requestAnimationFrame(frame);
+// Full map overlay
+const mapOverlay=document.createElement("div");
+mapOverlay.id="fullMap";
+mapOverlay.innerHTML='<div class="mapTitle">CITY MAP <span>M to close</span></div><canvas id="bigMap" width="900" height="700"></canvas><div class="mapLegend">🔵 You &nbsp; 🟠 Supplies &nbsp; 🔴 Objective &nbsp; ▪ Buildings</div>';
+document.body.appendChild(mapOverlay);
+const bigMap=document.getElementById("bigMap"), bigCtx=bigMap.getContext("2d");
+let mapOpen=false;
+function drawBigMap(){
+  const c=bigCtx,w=bigMap.width,h=bigMap.height,sc=Math.min((w-70)/(MAP_MAX-MAP_MIN),(h-90)/(MAP_MAX-MAP_MIN));
+  const ox=(w-(MAP_MAX-MAP_MIN)*sc)/2-MAP_MIN*sc,oy=55-MAP_MIN*sc;
+  c.clearRect(0,0,w,h);c.fillStyle="#142018";c.fillRect(0,0,w,h);
+  c.strokeStyle="rgba(255,255,255,.09)";c.lineWidth=1;
+  for(let v=MAP_MIN;v<=MAP_MAX;v+=5){c.beginPath();c.moveTo(ox+v*sc,55);c.lineTo(ox+v*sc,55+(MAP_MAX-MAP_MIN)*sc);c.stroke();c.beginPath();c.moveTo(ox+MAP_MIN*sc,55+(v-MAP_MIN)*sc);c.lineTo(ox+MAP_MAX*sc,55+(v-MAP_MIN)*sc);c.stroke()}
+  const X=x=>ox+x*sc,Y=z=>oy+z*sc;
+  c.fillStyle="#45433d";for(const b of buildings)c.fillRect(X(b.x-3),Y(b.z-3),6*sc,6*sc);
+  c.fillStyle="#8d8270";for(const f of towerFloors)c.fillRect(X(f.x-2.5),Y(f.z-2.5),5*sc,5*sc);
+  c.fillStyle="#f5a623";for(const item of items)if(!item.taken){c.beginPath();c.arc(X(item.x),Y(item.z),6,0,Math.PI*2);c.fill()}
+  c.fillStyle="#ef4938";c.beginPath();c.arc(X(tower.x+5),Y(tower.z+4),8,0,Math.PI*2);c.fill();
+  c.fillStyle="#35a7ff";c.beginPath();c.arc(X(player.x),Y(player.z),8,0,Math.PI*2);c.fill();
+  c.strokeStyle="#35a7ff";c.lineWidth=4;c.beginPath();c.moveTo(X(player.x),Y(player.z));c.lineTo(X(player.x)-Math.sin(yaw)*30,Y(player.z)-Math.cos(yaw)*30);c.stroke();
+}
+addEventListener("keydown",e=>{if(e.key.toLowerCase()==="m"){mapOpen=!mapOpen;mapOverlay.style.display=mapOpen?"flex":"none";if(mapOpen)drawBigMap();if(locked&&mapOpen&&document.exitPointerLock)document.exitPointerLock()}});
