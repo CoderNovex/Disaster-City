@@ -12,3 +12,10 @@ canvas{display:block;width:100%;height:100%}
 .mapTitle span{float:right;font-size:14px;font-weight:normal;opacity:.75;letter-spacing:0}
 .mapLegend{color:#fff;opacity:.9;margin-top:10px;font-size:14px}
 @media(max-width:700px){#minimap{width:130px;height:130px}.mapTitle{font-size:18px}.mapLegend{font-size:12px}}
+
+#carMenu{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;display:flex;flex-direction:column;gap:12px;align-items:center;padding:22px 26px;background:rgba(0,0,0,.9);border:2px solid #777;border-radius:14px;color:#fff;font-family:Arial,sans-serif}
+.carMenuTitle{font-size:25px;font-weight:800;letter-spacing:2px}
+.carButtons{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:520px}
+#carMenu button{background:#202020;color:#fff;border:1px solid #888;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+#carMenu button.selected{border-color:#42a5ff;background:#183a55}
+.carHint{font-size:13px;opacity:.75}
