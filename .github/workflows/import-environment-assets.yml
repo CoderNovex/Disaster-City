@@ -1,0 +1,54 @@
+name: Import Kenney environment packs
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  import-environment:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download the three supplied Kenney packs
+        run: |
+          set -e
+          mkdir -p /tmp/packs
+          curl -L --fail --retry 3 -o /tmp/packs/kenney_building-kit.zip https://opengameart.org/sites/default/files/kenney_building-kit.zip
+          curl -L --fail --retry 3 -o /tmp/packs/kenney_skyboxes.zip https://opengameart.org/sites/default/files/kenney_skyboxes.zip
+          curl -L --fail --retry 3 -o /tmp/packs/kenney_fantasy-town-kit_2.0.zip https://opengameart.org/sites/default/files/kenney_fantasy-town-kit_2.0.zip
+
+      - name: Extract GLB models and skyboxes
+        run: |
+          set -e
+          rm -rf assets/kenney-building-kit assets/kenney-fantasy-town-kit assets/kenney-skyboxes
+          mkdir -p assets/kenney-building-kit/Models/GLB\ format assets/kenney-building-kit/Models/Textures
+          mkdir -p assets/kenney-fantasy-town-kit/Models/GLB\ format assets/kenney-fantasy-town-kit/Models/Textures
+          mkdir -p assets/kenney-skyboxes
+
+          unzip -q /tmp/packs/kenney_building-kit.zip 'Models/GLB format/*.glb' 'Models/Textures/variation-a.png' -d /tmp/building
+          unzip -q /tmp/packs/kenney_fantasy-town-kit_2.0.zip 'Models/GLB format/*.glb' 'Models/Textures/variation-a.png' -d /tmp/fantasy
+          unzip -q /tmp/packs/kenney_skyboxes.zip 'Skyboxes/*.png' -d /tmp/sky
+
+          cp -R /tmp/building/Models/GLB\ format/. assets/kenney-building-kit/Models/GLB\ format/
+          cp /tmp/building/Models/Textures/variation-a.png assets/kenney-building-kit/Models/Textures/colormap.png
+          cp -R /tmp/fantasy/Models/GLB\ format/. assets/kenney-fantasy-town-kit/Models/GLB\ format/
+          cp /tmp/fantasy/Models/Textures/variation-a.png assets/kenney-fantasy-town-kit/Models/Textures/colormap.png
+          cp /tmp/sky/Skyboxes/*.png assets/kenney-skyboxes/
+
+      - name: Commit imported environment assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/kenney-building-kit assets/kenney-fantasy-town-kit assets/kenney-skyboxes
+          if git diff --cached --quiet; then
+            echo "No new environment assets."
+            exit 0
+          fi
+          git commit -m "Add Kenney building fantasy town and skybox assets"
+          git push
