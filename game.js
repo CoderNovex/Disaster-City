@@ -25,7 +25,7 @@ async function loadEnvironment(){
   statusEl.textContent="Loading buildings, fantasy town & sky...";
   try{
     const sky=await new THREE.TextureLoader().loadAsync(assetBaseSky+"skybox-day.png");
-    sky.mapping=THREE.EquirectangularReflectionMapping;sky.colorSpace=THREE.SRGBColorSpace;scene.background=sky;
+    sky.mapping=THREE.EquirectangularReflectionMapping;sky.encoding=THREE.sRGBEncoding;scene.background=sky;
   }catch(e){console.warn("Skybox failed",e)}
   const add=async(base,file,x,z,scale,rot=0)=>{try{const m=await loadModel(base+file);placeModel(m,x,0,z,scale,rot);return m}catch(e){console.warn("Environment model failed:",file,e)}};
   // Modern building facades around the existing city blocks.
