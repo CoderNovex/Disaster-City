@@ -97,25 +97,102 @@ for(const item of items)if(!item.taken)cube(item.x,.8,item.z,.65,.8,.65,item.typ
 drawMinimap();
 }
 requestAnimationFrame(frame);
-// Full map overlay
+// Full map overlay — interactive full-city map
 const mapOverlay=document.createElement("div");
 mapOverlay.id="fullMap";
-mapOverlay.innerHTML='<div class="mapTitle">CITY MAP <span>M to close</span></div><canvas id="bigMap" width="900" height="700"></canvas><div class="mapLegend">🔵 You &nbsp; 🟠 Supplies &nbsp; 🔴 Objective &nbsp; ▪ Buildings</div>';
+mapOverlay.innerHTML='<div class="mapTitle">CITY MAP <span>M to close • Drag to pan • Wheel to zoom</span></div><canvas id="bigMap" width="1100" height="760"></canvas><div class="mapLegend">🔵 You &nbsp; 🟠 Supplies &nbsp; 🔴 Objective &nbsp; ▪ Buildings &nbsp; Drag = explore map</div>';
 document.body.appendChild(mapOverlay);
 const bigMap=document.getElementById("bigMap"), bigCtx=bigMap.getContext("2d");
-let mapOpen=false;
+let mapOpen=false,mapZoom=1,mapPanX=0,mapPanY=0,mapDragging=false,mapLastX=0,mapLastY=0;
+
 function drawBigMap(){
-  const c=bigCtx,w=bigMap.width,h=bigMap.height,sc=Math.min((w-70)/(MAP_MAX-MAP_MIN),(h-90)/(MAP_MAX-MAP_MIN));
-  const ox=(w-(MAP_MAX-MAP_MIN)*sc)/2-MAP_MIN*sc,oy=55-MAP_MIN*sc;
+  const c=bigCtx,w=bigMap.width,h=bigMap.height;
   c.clearRect(0,0,w,h);c.fillStyle="#142018";c.fillRect(0,0,w,h);
-  c.strokeStyle="rgba(255,255,255,.09)";c.lineWidth=1;
-  for(let v=MAP_MIN;v<=MAP_MAX;v+=5){c.beginPath();c.moveTo(ox+v*sc,55);c.lineTo(ox+v*sc,55+(MAP_MAX-MAP_MIN)*sc);c.stroke();c.beginPath();c.moveTo(ox+MAP_MIN*sc,55+(v-MAP_MIN)*sc);c.lineTo(ox+MAP_MAX*sc,55+(v-MAP_MIN)*sc);c.stroke()}
-  const X=x=>ox+x*sc,Y=z=>oy+z*sc;
-  c.fillStyle="#45433d";for(const b of buildings)c.fillRect(X(b.x-3),Y(b.z-3),6*sc,6*sc);
-  c.fillStyle="#8d8270";for(const f of towerFloors)c.fillRect(X(f.x-2.5),Y(f.z-2.5),5*sc,5*sc);
-  c.fillStyle="#f5a623";for(const item of items)if(!item.taken){c.beginPath();c.arc(X(item.x),Y(item.z),6,0,Math.PI*2);c.fill()}
-  c.fillStyle="#ef4938";c.beginPath();c.arc(X(tower.x+5),Y(tower.z+4),8,0,Math.PI*2);c.fill();
-  c.fillStyle="#35a7ff";c.beginPath();c.arc(X(player.x),Y(player.z),8,0,Math.PI*2);c.fill();
-  c.strokeStyle="#35a7ff";c.lineWidth=4;c.beginPath();c.moveTo(X(player.x),Y(player.z));c.lineTo(X(player.x)-Math.sin(yaw)*30,Y(player.z)-Math.cos(yaw)*30);c.stroke();
+
+  const baseScale=Math.min((w-100)/(MAP_MAX-MAP_MIN),(h-120)/(MAP_MAX-MAP_MIN));
+  const sc=baseScale*mapZoom;
+  const centerX=w/2+mapPanX, centerY=h/2+mapPanY;
+  const X=x=>centerX+x*sc;
+  const Y=z=>centerY+z*sc;
+
+  // Keep the whole city outline visible while still allowing zoom/pan exploration.
+  c.save();
+  c.beginPath();
+  c.rect(25,55,w-50,h-85);
+  c.clip();
+
+  // City ground
+  c.fillStyle="#203522";
+  c.fillRect(X(MAP_MIN),Y(MAP_MIN),(MAP_MAX-MAP_MIN)*sc,(MAP_MAX-MAP_MIN)*sc);
+
+  // Road grid
+  c.strokeStyle="rgba(210,210,190,.16)";c.lineWidth=Math.max(1,2*mapZoom);
+  for(let v=-40;v<=40;v+=10){
+    c.beginPath();c.moveTo(X(v),Y(MAP_MIN));c.lineTo(X(v),Y(MAP_MAX));c.stroke();
+    c.beginPath();c.moveTo(X(MAP_MIN),Y(v));c.lineTo(X(MAP_MAX),Y(v));c.stroke();
+  }
+
+  // City boundary
+  c.strokeStyle="rgba(255,255,255,.65)";c.lineWidth=3;
+  c.strokeRect(X(MAP_MIN),Y(MAP_MIN),(MAP_MAX-MAP_MIN)*sc,(MAP_MAX-MAP_MIN)*sc);
+
+  // Buildings
+  c.fillStyle="#514f48";
+  for(const b of buildings)c.fillRect(X(b.x-3),Y(b.z-3),6*sc,6*sc);
+  c.fillStyle="#756b5c";
+  for(const f of towerFloors)c.fillRect(X(f.x-2.5),Y(f.z-2.5),5*sc,5*sc);
+
+  // Supplies
+  c.fillStyle="#f5a623";
+  for(const item of items)if(!item.taken){
+    c.beginPath();c.arc(X(item.x),Y(item.z),Math.max(4,6*mapZoom),0,Math.PI*2);c.fill();
+  }
+
+  // Objective
+  c.fillStyle="#ef4938";c.beginPath();c.arc(X(tower.x+5),Y(tower.z+4),Math.max(6,8*mapZoom),0,Math.PI*2);c.fill();
+
+  // Player + facing cone
+  c.fillStyle="#35a7ff";c.beginPath();c.arc(X(player.x),Y(player.z),Math.max(6,9*mapZoom),0,Math.PI*2);c.fill();
+  c.strokeStyle="#35a7ff";c.lineWidth=Math.max(2,4*mapZoom);
+  c.beginPath();c.moveTo(X(player.x),Y(player.z));
+  c.lineTo(X(player.x)-Math.sin(yaw)*30,Y(player.z)-Math.cos(yaw)*30);c.stroke();
+
+  c.restore();
+
+  c.fillStyle="#fff";c.font="bold 14px Arial";
+  c.fillText("ZOOM "+Math.round(mapZoom*100)+"%",35,h-38);
+  c.fillText("CITY 90 × 90",35,h-18);
 }
-addEventListener("keydown",e=>{if(e.key.toLowerCase()==="m"){mapOpen=!mapOpen;mapOverlay.style.display=mapOpen?"flex":"none";if(mapOpen)drawBigMap();if(locked&&mapOpen&&document.exitPointerLock)document.exitPointerLock()}});
+
+bigMap.addEventListener("wheel",e=>{
+  if(!mapOpen)return;
+  e.preventDefault();
+  mapZoom*=e.deltaY<0?1.15:.87;
+  mapZoom=Math.max(1,Math.min(4,mapZoom));
+  drawBigMap();
+},{passive:false});
+
+bigMap.addEventListener("pointerdown",e=>{
+  if(!mapOpen)return;
+  mapDragging=true;mapLastX=e.clientX;mapLastY=e.clientY;bigMap.setPointerCapture(e.pointerId);
+});
+bigMap.addEventListener("pointermove",e=>{
+  if(!mapDragging)return;
+  mapPanX+=e.clientX-mapLastX;mapPanY+=e.clientY-mapLastY;
+  mapLastX=e.clientX;mapLastY=e.clientY;drawBigMap();
+});
+bigMap.addEventListener("pointerup",()=>{mapDragging=false});
+bigMap.addEventListener("pointercancel",()=>{mapDragging=false});
+
+addEventListener("keydown",e=>{
+  if(e.key.toLowerCase()==="m"){
+    mapOpen=!mapOpen;
+    mapOverlay.style.display=mapOpen?"flex":"none";
+    if(mapOpen){
+      mapZoom=1;mapPanX=0;mapPanY=0;drawBigMap();
+      if(locked&&document.exitPointerLock)document.exitPointerLock();
+    }
+  }
+});
+
+setInterval(()=>{if(mapOpen)drawBigMap()},100);
