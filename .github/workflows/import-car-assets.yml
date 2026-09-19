@@ -1,0 +1,31 @@
+name: Import Kenney car assets
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  import-car-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import Kenney Car Kit GLB models and textures
+        run: |
+          git clone --depth 1 https://github.com/Arslan12216775/kenney_car-kit.git /tmp/kenney-car-kit
+          mkdir -p assets/kenney-car-kit
+          cp -R "/tmp/kenney-car-kit/Models/GLB format/." assets/kenney-car-kit/
+      - name: Commit imported assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/kenney-car-kit
+          if git diff --cached --quiet; then
+            echo "No new car assets."
+          else
+            git commit -m "Import Kenney car kit assets"
+            git push
+          fi
