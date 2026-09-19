@@ -129,7 +129,6 @@ async function selectCar(i){
     playerCar=await loadModel(assetBaseCar+carDefs[i].file);
     playerCar.visible=true;
     placeModel(playerCar,player.x,.02,player.z,carDefs[i].scale,carHeading);
-    carModels.push(playerCar);
     statusEl.textContent="🚗 "+carDefs[i].name+" selected. Explore the city!";
     setCarMenu(false);
   }catch(e){
