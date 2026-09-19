@@ -79,7 +79,19 @@ const target=[eye[0]+forward[0],eye[1]+forward[1],eye[2]+forward[2]];
 const vp=multiply(perspective(Math.PI/2.2,canvas.width/canvas.height,.05,130),lookAt(eye,target));
 cube(0,-.55,0,47,.45,47,[.16,.30,.12],vp);cube(0,-.03,0,3,.08,45,[.12,.12,.12],vp);cube(0,-.03,0,45,.08,3,[.12,.12,.12],vp);
 const wall=[.07,.10,.08];cube(0,2.5,MAP_MIN,46,2.5,.5,wall,vp);cube(0,2.5,MAP_MAX,46,2.5,.5,wall,vp);cube(MAP_MIN,2.5,0,.5,2.5,46,wall,vp);cube(MAP_MAX,2.5,0,.5,2.5,46,wall,vp);
-for(const b of buildings)cube(b.x,b.h,b.z,3,b.h,3,[.30,.28,.23],vp);for(const f of towerFloors)cube(f.x,f.y,f.z,f.sx,f.sy,f.sz,f.color,vp);for(const r of rubble)cube(r.x,r.y,r.z,r.sx,r.sy,r.sz,r.color,vp);
+for(const b of buildings){
+  cube(b.x,b.h,b.z,3,b.h,b.z?3:3,[.30,.28,.23],vp);
+  const floors=Math.max(2,Math.floor(b.h/.65));
+  for(let fy=.45;fy<b.h;fy+=.65){
+    for(const side of [-1,1]){
+      for(let wx=-1.8;wx<=1.8;wx+=.9) cube(b.x+wx,fy,b.z+side*3.03,.25,.24,.035,[.10,.20,.24],vp);
+    }
+    for(const side of [-1,1]){
+      for(let wz=-1.8;wz<=1.8;wz+=.9) cube(b.x+side*3.03,fy,b.z+wz,.035,.24,.25,[.10,.20,.24],vp);
+    }
+  }
+  cube(b.x,b.h+.12,b.z,3.15,.16,3.15,[.18,.17,.15],vp);
+}for(const f of towerFloors)cube(f.x,f.y,f.z,f.sx,f.sy,f.sz,f.color,vp);for(const r of rubble)cube(r.x,r.y,r.z,r.sx,r.sy,r.sz,r.color,vp);
 const pulse=.65+Math.sin(now*.01)*.2;cube(tower.x+4.5,.55,tower.z+4.5,.35,pulse,.35,[.95,.25,.04],vp);cube(tower.x+5.5,.45,tower.z+3.8,.25,pulse*.8,.25,[1,.55,.05],vp);
 for(const item of items)if(!item.taken)cube(item.x,.8,item.z,.65,.8,.65,item.type==="food"?[.95,.55,.08]:[.08,.55,.95],vp);
 drawMinimap();
