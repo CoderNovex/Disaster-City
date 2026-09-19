@@ -32,8 +32,7 @@ addEventListener("mousemove",e=>{if(!locked)return;targetYaw-=e.movementX*.0028;
 
 const loader=new GLTFLoader();
 const assetBaseRoad="./assets/kenney-city-kit-roads/";
-const assetBaseCar="./assets/kenney-car-kit/";
-const assetBaseCarRemote="https://raw.githubusercontent.com/Arslan12216775/kenney_car-kit/master/Models/GLB%20format/";
+const assetBaseCar="https://raw.githubusercontent.com/Arslan12216775/kenney_car-kit/master/Models/GLB%20format/";
 const modelCache=new Map();
 async function loadModel(url){
   if(modelCache.has(url))return modelCache.get(url).clone(true);
@@ -80,32 +79,22 @@ function collect(){for(const i of items)if(!i.taken&&Math.hypot(player.x-i.x,pla
 function endGame(m){gameOver=true;statusEl.textContent=m+" Press R to restart."}
 
 const playerMarker=new THREE.Mesh(new THREE.CapsuleGeometry(.22,.7,4,8),new THREE.MeshLambertMaterial({color:0x35a7ff}));
-playerMarker.position.set(0,1.05,0);scene.add(playerMarker); playerMarker.visible=false;
+playerMarker.position.set(0,1.05,0);scene.add(playerMarker);
 
 
 // --- Third-person car system ---
 const carDefs=[
   {name:"Sedan",file:"sedan.glb",speed:11,scale:.9},
-  {name:"Sports Sedan",file:"sedan-sports.glb",speed:14,scale:.9},
   {name:"SUV",file:"suv.glb",speed:10,scale:.9},
-  {name:"Luxury SUV",file:"suv-luxury.glb",speed:11,scale:.9},
   {name:"Taxi",file:"taxi.glb",speed:12,scale:.9},
   {name:"Ambulance",file:"ambulance.glb",speed:9,scale:.82},
-  {name:"Police",file:"police.glb",speed:13,scale:.82},
-  {name:"Fire Truck",file:"firetruck.glb",speed:8,scale:.82},
-  {name:"Van",file:"van.glb",speed:10,scale:.9},
-  {name:"Delivery",file:"delivery.glb",speed:10,scale:.85},
-  {name:"Truck",file:"truck.glb",speed:8,scale:.82},
-  {name:"Flat Truck",file:"truck-flat.glb",speed:8,scale:.82},
-  {name:"Race Car",file:"race.glb",speed:16,scale:.9},
-  {name:"Future Racer",file:"race-future.glb",speed:17,scale:.9},
-  {name:"Tractor",file:"tractor.glb",speed:6,scale:.82}
+  {name:"Police",file:"police.glb",speed:13,scale:.82}
 ];
-let selectedCar=0,playerCar=null,carHeading=0;
+let selectedCar=0,playerCar=null,carHeading=0,carModels=[];
 
 const carMenu=document.createElement("div");
 carMenu.id="carMenu";
-carMenu.innerHTML='<div class="carMenuTitle">🚗 CHOOSE YOUR RIDE</div><div class="carButtons"></div><div class="carHint">W = forward • S = reverse • A/D = steer • C = change vehicle</div>';
+carMenu.innerHTML='<div class="carMenuTitle">🚗 CHOOSE YOUR CAR</div><div class="carButtons"></div><div class="carHint">W/S drive • A/D steer • Mouse look</div>';
 document.body.appendChild(carMenu);
 const carButtons=carMenu.querySelector(".carButtons");
 
@@ -118,7 +107,7 @@ function makeCarButton(i){
 carDefs.forEach((_,i)=>makeCarButton(i));
 
 function setCarMenu(open){
-  carMenu.style.display=open?"flex":"none";\n  if(open) document.exitPointerLock?.();
+  carMenu.style.display=open?"flex":"none";
 }
 setCarMenu(true);
 
@@ -127,14 +116,10 @@ async function selectCar(i){
   document.querySelectorAll("#carMenu button").forEach((b,n)=>b.classList.toggle("selected",n===i));
   if(playerCar)scene.remove(playerCar);
   try{
-    try{
-      playerCar=await loadModel(assetBaseCar+carDefs[i].file);
-    }catch(localErr){
-      console.warn("Local car asset not ready; using remote fallback.",localErr);
-      playerCar=await loadModel(assetBaseCarRemote+carDefs[i].file);
-    }
+    playerCar=await loadModel(assetBaseCar+carDefs[i].file);
     playerCar.visible=true;
     placeModel(playerCar,player.x,.02,player.z,carDefs[i].scale,carHeading);
+    carModels.push(playerCar);
     statusEl.textContent="🚗 "+carDefs[i].name+" selected. Explore the city!";
     setCarMenu(false);
   }catch(e){
@@ -160,7 +145,7 @@ async function loadCityModels(){
   for(const [file,x,z,scale,rot] of roadPieces){
     try{
       const m=await loadModel(assetBaseRoad+file);
-      placeModel(m,x,.075,z,scale*1.18,rot);
+      placeModel(m,x,-.03,z,scale,rot);
     }catch(e){ console.warn("Road model failed:",file,e); }
   }
 
@@ -178,10 +163,17 @@ async function loadCityModels(){
     }catch(e){ console.warn("Prop model failed:",file,e); }
   }
 
-  // All vehicle files are available in the imported Kenney car-kit folder.
-  // The player chooses one instead of spawning every model on top of each other.
-  statusEl.textContent="🏙️ Roads loaded! Choose your ride.";
-  setCarMenu(true);
+  // Preload the car models so switching is instant after the first load.
+  for(const c of carDefs){
+    try{
+      const m=await loadModel(assetBaseCar+c.file);
+      scene.add(m);
+      carModels.push(m);
+    }catch(e){ console.warn("Car preload failed:",c.file,e); }
+  }
+
+  await selectCar(selectedCar);
+  statusEl.textContent="🏙️ City loaded. Choose a car and survive!";
 }
 loadCityModels();
 
@@ -203,8 +195,8 @@ function animate(now){
     const speed=carDefs[selectedCar].speed*dt;let dx=0,dz=0;
     if(keys.a||keys.arrowleft)carHeading+=2.2*dt;
     if(keys.d||keys.arrowright)carHeading-=2.2*dt;
-    if(keys.w||keys.arrowup){dx+=Math.sin(carHeading)*speed;dz+=Math.cos(carHeading)*speed}
-    if(keys.s||keys.arrowdown){dx-=Math.sin(carHeading)*speed*.65;dz-=Math.cos(carHeading)*speed*.65}
+    if(keys.w||keys.arrowup){dx-=Math.sin(carHeading)*speed;dz-=Math.cos(carHeading)*speed}
+    if(keys.s||keys.arrowdown){dx+=Math.sin(carHeading)*speed*.65;dz+=Math.cos(carHeading)*speed*.65}
     if(dx||dz){const l=Math.hypot(dx,dz);if(l>speed){dx=dx/l*speed;dz=dz/l*speed}move(dx,dz)}
     if(playerCar){playerCar.position.set(player.x,.02,player.z);playerCar.rotation.y=carHeading;} collect();
     survival-=dt;hunger=Math.max(0,hunger-dt*1.7);thirst=Math.max(0,thirst-dt*2.2);if(hunger<=0||thirst<=0)health=Math.max(0,health-dt*5);
@@ -212,8 +204,8 @@ function animate(now){
     updateHud();if(messageTimer>0){messageTimer-=dt;statusEl.textContent=message}
   }
   const camDistance=8,camHeight=4.2;
-  const behindX=player.x-Math.sin(carHeading)*camDistance;
-  const behindZ=player.z-Math.cos(carHeading)*camDistance;
+  const behindX=player.x+Math.sin(carHeading)*camDistance;
+  const behindZ=player.z+Math.cos(carHeading)*camDistance;
   camera.position.lerp(new THREE.Vector3(behindX,camHeight,behindZ),.12);
   const lookAt=new THREE.Vector3(player.x,1.1,player.z);
   camera.lookAt(lookAt);
@@ -239,6 +231,113 @@ bigMap.addEventListener("wheel",e=>{if(!mapOpen)return;e.preventDefault();mapZoo
 bigMap.addEventListener("pointerdown",e=>{drag=true;lx=e.clientX;ly=e.clientY;bigMap.setPointerCapture(e.pointerId)});
 bigMap.addEventListener("pointermove",e=>{if(!drag)return;mapPanX+=e.clientX-lx;mapPanY+=e.clientY-ly;lx=e.clientX;ly=e.clientY;drawBigMap()});
 bigMap.addEventListener("pointerup",()=>drag=false);
-addEventListener("keydown",e=>{if(e.key.toLowerCase()==="c"&&!gameOver){setCarMenu(true);return}if(e.key.toLowerCase()==="m"){mapOpen=!mapOpen;mapOverlay.style.display=mapOpen?"flex":"none";if(mapOpen){mapZoom=1;mapPanX=0;mapPanY=0;drawBigMap();document.exitPointerLock?.()}}});
+addEventListener("keydown",e=>{if(e.key.toLowerCase()==="m"){mapOpen=!mapOpen;mapOverlay.style.display=mapOpen?"flex":"none";if(mapOpen){mapZoom=1;mapPanX=0;mapPanY=0;drawBigMap();document.exitPointerLock?.()}}});
 setInterval(()=>{if(mapOpen)drawBigMap()},100);
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight,false)});
+
+
+// ---------- GAMEPLAY RECORDING (F1 toggle) ----------
+let mediaRecorder=null;
+let recordedChunks=[];
+let isRecording=false;
+const recordings=[];
+
+function createRecordingUI(){
+  const indicator=document.createElement("div");
+  indicator.id="recIndicator";
+  indicator.style.cssText="position:fixed;top:60px;right:16px;color:#ff3333;font:12px monospace;z-index:30;display:none;align-items:center;gap:6px;text-shadow:0 0 6px rgba(255,0,0,.7);";
+  indicator.innerHTML='<span style="width:9px;height:9px;border-radius:50%;background:#ff3333;display:inline-block;"></span>REC';
+  document.body.appendChild(indicator);
+
+  const button=document.createElement("button");
+  button.id="viewRecBtn";
+  button.textContent="▶ RECORDINGS";
+  button.style.cssText="position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#1a2028;color:#c9c2ab;border:1px solid #3dd6ff55;padding:9px 16px;border-radius:4px;font:11px monospace;letter-spacing:1px;cursor:pointer;z-index:30;";
+  document.body.appendChild(button);
+
+  const panel=document.createElement("div");
+  panel.id="recPanel";
+  panel.style.cssText="position:fixed;inset:0;background:rgba(10,13,18,.94);z-index:40;display:none;flex-direction:column;align-items:center;padding:40px 20px;overflow-y:auto;font-family:monospace;";
+  panel.innerHTML='<button id="closeRec" style="position:fixed;top:16px;right:16px;background:#221a12;color:#ff6a3d;border:1px solid #ff6a3d55;padding:8px 14px;border-radius:4px;cursor:pointer;font-family:monospace;">✕ CLOSE</button><h2 style="color:#ff6a3d;letter-spacing:2px;">YOUR RECORDINGS</h2><div id="recList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;max-width:1100px;width:100%;"></div><p id="noRecs" style="color:#77706a;font-size:12px;margin-top:60px;">No recordings yet. Press F1 while driving to start one.</p>';
+  document.body.appendChild(panel);
+
+  button.addEventListener("click",()=>{refreshRecList();panel.style.display="flex";document.exitPointerLock?.()});
+  panel.querySelector("#closeRec").addEventListener("click",()=>panel.style.display="none");
+}
+createRecordingUI();
+
+function startRecording(){
+  try{
+    if(!renderer.domElement.captureStream||typeof MediaRecorder==="undefined"){
+      alert("Recording is not supported in this browser/environment.");
+      return;
+    }
+    const stream=renderer.domElement.captureStream(30);
+    recordedChunks=[];
+    const mimeType=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm";
+    mediaRecorder=new MediaRecorder(stream,{mimeType});
+    mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recordedChunks.push(e.data)};
+    mediaRecorder.onstop=()=>{
+      const blob=new Blob(recordedChunks,{type:"video/webm"});
+      const url=URL.createObjectURL(blob);
+      recordings.unshift({url,blob,name:"Run "+(recordings.length+1),date:new Date().toLocaleString()});
+      refreshRecList();
+    };
+    mediaRecorder.start();
+    isRecording=true;
+    document.getElementById("recIndicator").style.display="flex";
+  }catch(err){
+    console.error("Recording failed to start:",err);
+    alert("Recording is not supported in this browser/environment.");
+  }
+}
+
+function stopRecording(){
+  if(mediaRecorder&&isRecording){
+    mediaRecorder.stop();
+    isRecording=false;
+    document.getElementById("recIndicator").style.display="none";
+  }
+}
+
+addEventListener("keydown",e=>{
+  if(e.key==="F1"){
+    e.preventDefault();
+    if(isRecording)stopRecording();
+    else startRecording();
+  }
+});
+
+function refreshRecList(){
+  const list=document.getElementById("recList");
+  const noRecs=document.getElementById("noRecs");
+  list.innerHTML="";
+  if(recordings.length===0){
+    noRecs.style.display="block";
+    return;
+  }
+  noRecs.style.display="none";
+  recordings.forEach((r,i)=>{
+    const item=document.createElement("div");
+    item.style.cssText="background:#151a20;border:1px solid #3dd6ff33;border-radius:6px;padding:10px;";
+    item.innerHTML='<video src="'+r.url+'" controls style="width:100%;border-radius:4px;background:#000;"></video><p style="color:#c9c2ab;font-size:11px;margin:8px 0 6px;">'+r.name+" — "+r.date+'</p><div style="display:flex;gap:8px;"><button data-action="download" data-idx="'+i+'" style="flex:1;background:#1a2028;color:#c9c2ab;border:1px solid #444;border-radius:3px;padding:6px;font-family:monospace;cursor:pointer;">⬇ Save</button><button data-action="delete" data-idx="'+i+'" style="flex:1;background:#1a2028;color:#c9c2ab;border:1px solid #444;border-radius:3px;padding:6px;font-family:monospace;cursor:pointer;">✕ Delete</button></div>';
+    list.appendChild(item);
+  });
+  list.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const idx=parseInt(btn.dataset.idx,10);
+      if(btn.dataset.action==="download"){
+        const a=document.createElement("a");
+        a.href=recordings[idx].url;
+        a.download="disaster_city_"+recordings[idx].name.replace(/\s+/g,"_")+".webm";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }else{
+        URL.revokeObjectURL(recordings[idx].url);
+        recordings.splice(idx,1);
+        refreshRecList();
+      }
+    });
+  });
+}
