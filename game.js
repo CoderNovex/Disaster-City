@@ -203,8 +203,8 @@ function animate(now){
     const speed=carDefs[selectedCar].speed*dt;let dx=0,dz=0;
     if(keys.a||keys.arrowleft)carHeading+=2.2*dt;
     if(keys.d||keys.arrowright)carHeading-=2.2*dt;
-    if(keys.w||keys.arrowup){dx-=Math.sin(carHeading)*speed;dz-=Math.cos(carHeading)*speed}
-    if(keys.s||keys.arrowdown){dx+=Math.sin(carHeading)*speed*.65;dz+=Math.cos(carHeading)*speed*.65}
+    if(keys.w||keys.arrowup){dx+=Math.sin(carHeading)*speed;dz+=Math.cos(carHeading)*speed}
+    if(keys.s||keys.arrowdown){dx-=Math.sin(carHeading)*speed*.65;dz-=Math.cos(carHeading)*speed*.65}
     if(dx||dz){const l=Math.hypot(dx,dz);if(l>speed){dx=dx/l*speed;dz=dz/l*speed}move(dx,dz)}
     if(playerCar){playerCar.position.set(player.x,.02,player.z);playerCar.rotation.y=carHeading;} collect();
     survival-=dt;hunger=Math.max(0,hunger-dt*1.7);thirst=Math.max(0,thirst-dt*2.2);if(hunger<=0||thirst<=0)health=Math.max(0,health-dt*5);
@@ -212,8 +212,8 @@ function animate(now){
     updateHud();if(messageTimer>0){messageTimer-=dt;statusEl.textContent=message}
   }
   const camDistance=8,camHeight=4.2;
-  const behindX=player.x+Math.sin(carHeading)*camDistance;
-  const behindZ=player.z+Math.cos(carHeading)*camDistance;
+  const behindX=player.x-Math.sin(carHeading)*camDistance;
+  const behindZ=player.z-Math.cos(carHeading)*camDistance;
   camera.position.lerp(new THREE.Vector3(behindX,camHeight,behindZ),.12);
   const lookAt=new THREE.Vector3(player.x,1.1,player.z);
   camera.lookAt(lookAt);
