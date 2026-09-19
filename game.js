@@ -31,7 +31,7 @@ document.addEventListener("pointerlockchange",()=>locked=document.pointerLockEle
 addEventListener("mousemove",e=>{if(!locked)return;targetYaw-=e.movementX*.0028;targetPitch-=e.movementY*.0022;targetPitch=Math.max(-1.25,Math.min(1.25,targetPitch))});
 
 const loader=new GLTFLoader();
-const assetBaseRoad="./assets/kenney-city-kit-roads/";
+const assetBaseRoad="https://raw.githubusercontent.com/petroulacl/fps-buildings-env-kit/main/props/kenney-city-kit-roads/Models/GLB%20format/";
 const assetBaseCar="https://raw.githubusercontent.com/Arslan12216775/kenney_car-kit/master/Models/GLB%20format/";
 const modelCache=new Map();
 async function loadModel(url){
@@ -101,7 +101,7 @@ async function loadCityModels(){
     ["ambulance.glb",-17,-6,.82,-Math.PI/2],["police.glb",18,-25,.82,Math.PI]
   ];
   for(const [file,x,z,s,r] of cars){try{const m=await loadModel(assetBaseCar+file);placeModel(m,x,0,z,s,r)}catch(e){}}
-  const props=[["road-sign-stop.glb",-6,0,-12,1,0],["construction-cone.glb",5,0,7,.8,0],["light-square.glb",-14,0,12,1,0],["traffic-light.glb",7,0,7,.9,Math.PI/2]];
+  const props=[["road-sign-stop.glb",-6,0,-12,1,0],["construction-cone.glb",5,0,7,.8,0],["light-square.glb",-14,0,12,1,0]];
   for(const [file,x,y,z,s,r] of props){try{const m=await loadModel(assetBaseRoad+file);placeModel(m,x,y,z,s,r)}catch(e){}}
   statusEl.textContent="🏙️ City loaded. Explore, collect supplies, survive.";
 }
