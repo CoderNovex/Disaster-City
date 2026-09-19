@@ -84,6 +84,7 @@ function cube(x,y,z,sx,sy,sz,color,vp){
 
 const MAP_MIN=-45, MAP_MAX=45;
 const player={x:0,z:0};
+const survivor={skin:[0.78,0.52,0.30],shirt:[0.10,0.20,0.28],pants:[0.08,0.09,0.10]};
 const keys={};
 addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
@@ -254,6 +255,34 @@ function frame(now){
     cube(item.x,0.8,item.z,0.65,0.8,0.65,color,vp);
   }
 
-  cube(player.x,1,player.z,0.55,1,0.55,[0.85,0.85,0.2],vp);
+  // Low-poly survivor character: head, torso, backpack, arms and legs.
+  // Built from cheap cubes so it stays fast on low-end PCs.
+  const bob = Math.sin(now*0.012)*0.04;
+  const walking = (keys.w||keys.a||keys.s||keys.d||keys.arrowup||keys.arrowdown||keys.arrowleft||keys.arrowright);
+  const step = walking ? Math.sin(now*0.025)*0.12 : 0;
+
+  // Legs
+  cube(player.x-0.22,0.62+step,player.z,0.18,0.62,0.22,survivor.pants,vp);
+  cube(player.x+0.22,0.62-step,player.z,0.18,0.62,0.22,survivor.pants,vp);
+  // Boots
+  cube(player.x-0.22,0.12+step,player.z-0.12,0.22,0.14,0.32,[0.03,0.03,0.03],vp);
+  cube(player.x+0.22,0.12-step,player.z-0.12,0.22,0.14,0.32,[0.03,0.03,0.03],vp);
+  // Torso + jacket
+  cube(player.x,1.55+bob,player.z,0.62,0.72,0.34,survivor.shirt,vp);
+  // Backpack
+  cube(player.x,1.55+bob,player.z+0.34,0.42,0.58,0.18,[0.18,0.12,0.07],vp);
+  // Arms
+  cube(player.x-0.48,1.50+bob,player.z,0.14,0.58,0.18,survivor.shirt,vp);
+  cube(player.x+0.48,1.50+bob,player.z,0.14,0.58,0.18,survivor.shirt,vp);
+  // Hands
+  cube(player.x-0.48,1.10+bob,player.z,0.16,0.16,0.20,survivor.skin,vp);
+  cube(player.x+0.48,1.10+bob,player.z,0.16,0.16,0.20,survivor.skin,vp);
+  // Neck + head
+  cube(player.x,2.10+bob,player.z,0.22,0.18,0.22,survivor.skin,vp);
+  cube(player.x,2.48+bob,player.z,0.42,0.42,0.42,survivor.skin,vp);
+  // Hair
+  cube(player.x,2.73+bob,player.z,0.44,0.12,0.44,[0.04,0.025,0.015],vp);
+  // Simple face visor/front detail
+  cube(player.x,2.48+bob,player.z-0.22,0.28,0.16,0.04,[0.12,0.18,0.20],vp);
 }
 requestAnimationFrame(frame);
