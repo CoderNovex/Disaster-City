@@ -13,9 +13,10 @@ canvas{display:block;width:100%;height:100%}
 .mapLegend{color:#fff;opacity:.9;margin-top:10px;font-size:14px}
 @media(max-width:700px){#minimap{width:130px;height:130px}.mapTitle{font-size:18px}.mapLegend{font-size:12px}}
 
-#carMenu{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;display:flex;flex-direction:column;gap:12px;align-items:center;padding:22px 26px;background:rgba(0,0,0,.9);border:2px solid #777;border-radius:14px;color:#fff;font-family:Arial,sans-serif}
+#carMenu{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;display:flex;flex-direction:column;gap:12px;align-items:center;padding:22px 26px;background:rgba(0,0,0,.92);border:2px solid #777;border-radius:14px;color:#fff;font-family:Arial,sans-serif;max-width:min(92vw,720px);max-height:78vh}
 .carMenuTitle{font-size:25px;font-weight:800;letter-spacing:2px}
-.carButtons{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:520px}
-#carMenu button{background:#202020;color:#fff;border:1px solid #888;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer}
+.carButtons{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:650px;overflow:auto;padding:3px}
+#carMenu button{background:#202020;color:#fff;border:1px solid #888;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;min-width:105px}#carMenu button:hover{border-color:#42a5ff;transform:translateY(-1px)}
 #carMenu button.selected{border-color:#42a5ff;background:#183a55}
 .carHint{font-size:13px;opacity:.75}
+\n.carHint{font-size:13px;opacity:.8;text-align:center}\n
