@@ -1,24 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Survival</title>
-<link rel="stylesheet" href="style.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Survival City</title><link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="hud">
-  <div class="title">SURVIVAL</div>
-  <div>WASD / Arrow Keys: Move</div>
-  <div>Survive: <span id="timer">120</span>s</div>
-  <div>❤️ Health: <span id="health">100</span>%</div>
-  <div>🍎 Hunger: <span id="hunger">100</span>%</div>
-  <div>💧 Thirst: <span id="thirst">100</span>%</div>
-  <div>⭐ Score: <span id="score">0</span></div>
-  <div id="status">Loading survival world...</div>
+<div class="title">SURVIVAL CITY</div>
+<div>WASD: Move • Mouse: Look • Click: Lock</div>
+<div>Press M: Full City Map</div>
+<div>Survive: <span id="timer">120</span>s</div>
+<div>❤️ Health: <span id="health">100</span>%</div>
+<div>🍎 Hunger: <span id="hunger">100</span>%</div>
+<div>💧 Thirst: <span id="thirst">100</span>%</div>
+<div>⭐ Score: <span id="score">0</span></div>
+<div id="status">Loading survival city...</div>
 </div>
-<canvas id="game"></canvas>
-<canvas id="minimap" width="180" height="180"></canvas>
-<script src="game.js"></script>
-</body>
-</html>
+<canvas id="game"></canvas><canvas id="minimap" width="180" height="180"></canvas>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.180.0/build/three.module.js"}}</script>
+<script type="module" src="game.js"></script>
+</body></html>
