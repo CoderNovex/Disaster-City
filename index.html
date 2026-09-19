@@ -17,6 +17,16 @@
 <div id="status">Loading survival city...</div>
 </div>
 <canvas id="game"></canvas><canvas id="minimap" width="180" height="180"></canvas>
-<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.180.0/build/three.module.js"}}</script>
+<script>
+window.addEventListener("error",e=>{
+  const s=document.getElementById("status");
+  if(s)s.textContent="⚠️ JS error: "+(e.message||"module failed to load");
+});
+window.addEventListener("unhandledrejection",e=>{
+  const s=document.getElementById("status");
+  if(s)s.textContent="⚠️ Module error: "+(e.reason?.message||String(e.reason));
+});
+</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}</script>
 <script type="module" src="game.js"></script>
 </body></html>
